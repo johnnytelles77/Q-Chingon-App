@@ -1,0 +1,50 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.RewardConfigDTO;
+import com.loyalty.models.Business;
+import com.loyalty.models.RewardConfig;
+import com.loyalty.repositories.BusinessRepository;
+import com.loyalty.repositories.RewardConfigRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class RewardConfigService {
+
+    @Autowired
+    private RewardConfigRepository rewardRepo;
+
+    @Autowired
+    private BusinessRepository businessRepo;
+
+
+    // Obtener la configuración de un negocio
+    public RewardConfigDTO getByNegocioId(Long negocioId) {
+        RewardConfig config = rewardRepo.findByNegocioId(negocioId)
+                .orElseThrow(() -> new EntityNotFoundException("No RewardConfig found for negocioId " + negocioId));
+
+        return RewardConfigDTO.from(config);
+    }
+
+
+    // Crear o actualizar configuración
+    public RewardConfigDTO saveOrUpdate(Long negocioId, RewardConfigDTO dto) {
+
+        Business negocio = businessRepo.findById(negocioId)
+                .orElseThrow(() -> new EntityNotFoundException("Negocio no encontrado con ID " + negocioId));
+
+        RewardConfig config = rewardRepo.findByNegocioId(negocioId)
+                .orElse(new RewardConfig());
+
+        // Setear valores
+        config.setNegocioId(negocioId);
+        config.setNegocio(negocio);
+        config.setPuntosNecesarios(dto.getPuntosNecesarios());
+        config.setMensajeProgreso(dto.getMensajeProgreso());
+
+        rewardRepo.save(config);
+
+        return RewardConfigDTO.from(config);
+    }
+}

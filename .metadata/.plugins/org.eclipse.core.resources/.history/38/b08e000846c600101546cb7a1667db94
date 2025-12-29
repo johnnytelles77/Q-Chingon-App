@@ -1,0 +1,5 @@
+package com.loyalty.dtos;
+
+public class PointsTotalDTO {
+
+}

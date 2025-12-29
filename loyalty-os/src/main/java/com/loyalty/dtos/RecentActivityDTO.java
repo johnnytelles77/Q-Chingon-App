@@ -17,7 +17,7 @@ public class RecentActivityDTO {
         return RecentActivityDTO.builder()
                 .type(log.getTipo())
                 .points(log.getCantidad())
-                .customerName(log.getUser().getNombre())
+                .customerName(log.getUser() != null ? log.getUser().getNombre() : null)
                 .createdAt(log.getFecha())
                 .build();
     }

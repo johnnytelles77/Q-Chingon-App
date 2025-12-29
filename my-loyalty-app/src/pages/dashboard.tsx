@@ -1,43 +1,53 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
+import Navbar from '../components/Navbar';
+import AddPoints from '../components/AddPoints';
+import History from '../pages/history';
+import DashboardHome from '../components/DashboardHome';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Clients from '../components/Clients';
 
-export default function DashboardPage() {
-  const { business, logout, loading, isAuthenticated } = useAuth();
+type MenuOption = 'home' | 'addPoints' | 'history' | 'clients';
+
+export default function Dashboard() {
+  const [activeMenu, setActiveMenu] = useState<MenuOption>('home');
+
+  const { logout, business } = useAuth(); // 🔑 usamos el contexto
   const router = useRouter();
 
-  // ⚡ Redirige a login si no está autenticado
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.replace('/login');
+  const renderContent = () => {
+    switch (activeMenu) {
+      case 'addPoints':
+        return <AddPoints />;
+      case 'history':
+        return <History />;
+      case 'clients':
+        return <Clients />;
+      default:
+        return <DashboardHome />;
     }
-  }, [loading, isAuthenticated, router]);
+  };
 
-  if (loading || !business) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <h1 className="text-2xl font-semibold">Cargando...</h1>
-      </div>
-    );
-  }
+  // ✅ Cerrar sesión real
+  const handleLogout = () => {
+    logout();               // borra token + estado
+    router.push('/login');  // vuelve al login
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 space-y-6">
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold">Bienvenido, {business.nombre}</h1>
-        <button
-          onClick={() => {
-            logout();
-            router.replace('/login');
-          }}
-          className="bg-red-500 text-white px-4 py-2 rounded"
-        >
-          Cerrar sesión
-        </button>
-      </div>
+    <div className="min-h-screen bg-beige-50 font-sans text-gray-800">
+      {/* Navbar */}
+      <Navbar
+        businessName={business?.nombre ?? ''}
+        onLogout={handleLogout}
+        onSelectPage={(page: MenuOption) => setActiveMenu(page)}
+      />
 
-      <h1 className="text-5xl font-extrabold">LOYALTY OS</h1>
+      {/* Contenido principal */}
+      <main className="pt-6 px-6 md:px-12">
+        {renderContent()}
+      </main>
     </div>
   );
 }

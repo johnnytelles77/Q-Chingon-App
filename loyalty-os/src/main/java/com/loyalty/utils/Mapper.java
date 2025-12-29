@@ -27,6 +27,7 @@ public class Mapper {
         if (user == null) return null;
 
         UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
         dto.setNombre(user.getNombre());
         dto.setEmail(user.getEmail());
         dto.setTelefono(user.getTelefono());

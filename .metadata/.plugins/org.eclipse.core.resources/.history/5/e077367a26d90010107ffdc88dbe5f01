@@ -1,0 +1,107 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.UserDTO;
+import com.loyalty.models.Business;
+import com.loyalty.models.User;
+import com.loyalty.repositories.BusinessRepository;
+import com.loyalty.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@Transactional
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private BusinessRepository businessRepository;
+    
+    @Autowired
+    private LoyaltyLogService loyaltyLogService;
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public Optional<User> getUserByTelefono(String telefono) {
+        return userRepository.findByTelefono(telefono);
+    }
+
+    public User createOrGetUser(UserDTO dto) {
+        // Buscar por teléfono
+        Optional<User> existing = userRepository.findByTelefono(dto.getTelefono());
+        if (existing.isPresent()) {
+            return existing.get(); // si ya existe, retornarlo
+        }
+
+        // Si no existe, crear nuevo usuario
+        User user = new User();
+        user.setNombre(dto.getNombre());
+        user.setTelefono(dto.getTelefono());
+        user.setEmail(dto.getEmail());
+
+        // Si no se envían puntos, poner 25 puntos de regalo
+        user.setPuntos(25);
+
+        // Asignar negocio si se proporciona
+        if (dto.getBusinessId() != null) {
+            Business negocio = businessRepository.findById(dto.getBusinessId())
+                    .orElseThrow(() -> new IllegalArgumentException("Negocio no encontrado"));
+            user.setNegocio(negocio);
+        }
+
+        return userRepository.save(user);
+    }
+
+    public User updateUser(Long id, UserDTO dto) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        user.setNombre(dto.getNombre());
+        user.setTelefono(dto.getTelefono());
+        user.setEmail(dto.getEmail());
+        user.setPuntos(dto.getPuntos());
+        return userRepository.save(user);
+    }
+
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    public User addPoints(Long userId, int puntos) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        user.setPuntos(user.getPuntos() + puntos);
+        User savedUser = userRepository.save(user);
+        LoyaltyLogDTO log = new LoyaltyLogDTO();
+        log.setUserId(user.getId());
+        log.setCantidad(puntos);
+        log.setTipo("ADD_POINTS");
+        log.setFecha(LocalDateTime.now());
+        loyaltyLogService.saveLog(log);
+        return savedUser;
+    }
+
+    public User redeemPoints(Long userId, int puntos) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        int nuevos = Math.max(user.getPuntos() - puntos, 0);
+        user.setPuntos(nuevos);
+        return userRepository.save(user);
+    }
+    
+ // Dentro de UserService.java
+    public User getUserByTelefonoExact(String telefono) {
+        return userRepository.findByTelefono(telefono)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+    }
+}

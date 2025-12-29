@@ -100,4 +100,15 @@ public class LoyaltyLogService {
                 .mapToInt(LoyaltyLog::getCantidad)
                 .sum();
     }
+    
+    public void logAction(User user, int cantidad, String tipo) {
+        LoyaltyLog log = new LoyaltyLog();
+        log.setUser(user);
+        log.setCantidad(cantidad);
+        log.setTipo(tipo);
+        log.setFecha(LocalDateTime.now());
+
+        logRepository.save(log);
     }
+    
+  }

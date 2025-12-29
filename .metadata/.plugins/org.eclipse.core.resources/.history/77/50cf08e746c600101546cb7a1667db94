@@ -1,0 +1,38 @@
+package com.loyalty.repositories;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import com.loyalty.models.LoyaltyLog;
+
+import java.util.List;
+
+@Repository
+public interface LoyaltyLogRepository extends JpaRepository<LoyaltyLog, Long> {
+
+    // Historial de un cliente
+    List<LoyaltyLog> findByUserId(Long userId);
+
+    // Historial de todos los usuarios de un negocio
+    List<LoyaltyLog> findByUserNegocioId(Long negocioId);
+
+    // Contar logs por negocio
+    long countByUserNegocioId(Long negocioId);
+
+    // Total puntos ganados por negocio
+    @Query("SELECT COALESCE(SUM(l.pointsEarned),0) FROM LoyaltyLog l WHERE l.user.negocio.id = :negocioId")
+    int totalPointsEarned(Long negocioId);
+
+    // Total puntos usados por negocio
+    @Query("SELECT COALESCE(SUM(l.pointsRedeemed),0) FROM LoyaltyLog l WHERE l.user.negocio.id = :negocioId")
+    int totalPointsRedeemed(Long negocioId);
+
+    // Total puntos disponibles de un negocio
+    @Query("""
+        SELECT COALESCE(SUM(l.pointsEarned),0) - COALESCE(SUM(l.pointsRedeemed),0)
+        FROM LoyaltyLog l
+        WHERE l.user.negocio.id = :negocioId
+        """)
+    int totalPointsAvailable(Long negocioId);
+}
+

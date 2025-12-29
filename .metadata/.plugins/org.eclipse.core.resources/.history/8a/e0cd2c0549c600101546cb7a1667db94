@@ -1,0 +1,100 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.LoyaltyLogDTO;
+import com.loyalty.dtos.PointsTotalsDTO;
+import com.loyalty.models.Business;
+import com.loyalty.models.LoyaltyLog;
+import com.loyalty.models.User;
+import com.loyalty.repositories.LoyaltyLogRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class PointsService {
+
+    @Autowired
+    private LoyaltyLogRepository loyaltyLogRepository;
+
+    @Autowired
+    private BusinessService businessService;
+
+    @Autowired
+    private UserService userService;
+
+    // --------------------------------------------------------------------
+    // Obtener historial de puntos de TODO el negocio (paginado)
+    // --------------------------------------------------------------------
+    public Page<LoyaltyLogDTO> getBusinessHistory(String token, int page, int size) {
+
+        Business business = businessService.getAuthenticatedBusinessEntity(token);
+        if (business == null) throw new IllegalArgumentException("Negocio no encontrado");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
+
+        List<LoyaltyLog> logs = loyaltyLogRepository.findByUserNegocioId(business.getId(), pageable);
+
+        long total = loyaltyLogRepository.countByUserNegocioId(business.getId());
+
+        List<LoyaltyLogDTO> dtos = logs.stream()
+                .map(LoyaltyLogDTO::from)
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, total);
+    }
+
+    // --------------------------------------------------------------------
+    // Obtener historial de puntos de un usuario específico (paginado)
+    // --------------------------------------------------------------------
+    public Page<LoyaltyLogDTO> getUserHistory(Long userId, int page, int size) {
+
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
+
+        List<LoyaltyLog> logs = loyaltyLogRepository.findByUserId(userId, pageable);
+
+        long total = loyaltyLogRepository.findByUserId(userId).size();
+
+        List<LoyaltyLogDTO> dtos = logs.stream()
+                .map(LoyaltyLogDTO::from)
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, total);
+    }
+
+    // --------------------------------------------------------------------
+    // Últimos movimientos por usuario (para perfil o dashboard más detalle)
+    // --------------------------------------------------------------------
+    public List<LoyaltyLogDTO> getUserRecentHistory(Long userId) {
+
+        return loyaltyLogRepository
+                .findTop20ByUserIdOrderByFechaDesc(userId)
+                .stream()
+                .map(LoyaltyLogDTO::from)
+                .toList();
+    }
+
+    // --------------------------------------------------------------------
+    // Totales de puntos del negocio (para dashboard, gráficas o analytics)
+    // --------------------------------------------------------------------
+    public PointsTotalsDTO getBusinessTotals(String token) {
+
+        Business business = businessService.getAuthenticatedBusinessEntity(token);
+        if (business == null) throw new IllegalArgumentException("Negocio no encontrado");
+
+        int earned = loyaltyLogRepository.totalPointsEarned(business.getId());
+        int redeemed = loyaltyLogRepository.totalPointsRedeemed(business.getId());
+
+        return PointsTotalsDTO.builder()
+                .totalEarned(earned)
+                .totalRedeemed(redeemed)
+                .netPoints(earned - redeemed)
+                .build();
+    }
+}
+

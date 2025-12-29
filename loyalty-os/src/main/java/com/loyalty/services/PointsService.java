@@ -1,0 +1,71 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.LoyaltyLogDTO;
+import com.loyalty.dtos.PointsTotalsDTO;
+import com.loyalty.models.Business;
+import com.loyalty.models.LoyaltyLog;
+import com.loyalty.repositories.LoyaltyLogRepository;
+import com.loyalty.services.BusinessService;
+import com.loyalty.config.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class PointsService {
+
+    @Autowired
+    private LoyaltyLogRepository loyaltyLogRepository;
+
+    @Autowired
+    private BusinessService businessService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    // Historial de puntos del negocio autenticado
+    public Page<LoyaltyLogDTO> getBusinessHistory(String token, int page, int size, String tipo) {
+        String email = jwtUtil.extractEmail(token);
+
+        Business business = businessService.getByEmail(email);
+        if (business == null) {
+            throw new IllegalArgumentException("Negocio no encontrado");
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
+
+        Page<LoyaltyLog> logsPage;
+
+        if (tipo != null && !tipo.isEmpty()) {
+            logsPage = loyaltyLogRepository
+                    .findByUserNegocioIdAndTipo(business.getId(), tipo, pageable);
+        } else {
+            logsPage = loyaltyLogRepository
+                    .findByUserNegocioId(business.getId(), pageable);
+        }
+        List<LoyaltyLogDTO> dtos = logsPage.getContent().stream()
+                .map(LoyaltyLogDTO::from)
+                .toList();
+        return new PageImpl<>(dtos, pageable, logsPage.getTotalElements());
+    }
+
+    // Totales de puntos del negocio autenticado
+    public PointsTotalsDTO getBusinessTotals(String token) {
+        String email = jwtUtil.extractEmail(token);
+        Business business = businessService.getByEmail(email);
+        if (business == null) {
+            throw new IllegalArgumentException("Negocio no encontrado");
+        }
+
+        int earned = loyaltyLogRepository.totalPointsEarned(business.getId());
+        int redeemed = loyaltyLogRepository.totalPointsRedeemed(business.getId());
+
+        return PointsTotalsDTO.builder()
+                .totalEarned(earned)
+                .totalRedeemed(redeemed)
+                .netPoints(earned - redeemed)
+                .build();
+    }
+}
+

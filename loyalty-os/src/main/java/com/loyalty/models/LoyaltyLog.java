@@ -24,7 +24,8 @@ public class LoyaltyLog {
 
     @Schema(description="Fecha del movimiento")
     private LocalDateTime fecha;
-
+    
+    
     @ManyToOne
     @JoinColumn(name="user_id")
     @JsonIgnore

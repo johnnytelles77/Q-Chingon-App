@@ -1,0 +1,23 @@
+package com.loyalty.dtos;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
+import com.loyalty.models.LoyaltyLog;
+
+@Data
+public class LoyaltyLogDTO {
+    private int cantidad;
+    private String tipo;
+    private LocalDateTime fecha;
+    private Long userId;
+    
+    public static LoyaltyLogDTO from(LoyaltyLog log) {
+        LoyaltyLogDTO dto = new LoyaltyLogDTO();
+        dto.setCantidad(log.getPointsChanged());
+        dto.setTipo(log.getPointsChanged() >= 0 ? "earned" : "redeemed");
+        dto.setFecha(log.getFecha());
+        dto.setUserId(log.getUser().getId());
+        return dto;
+    }
+}

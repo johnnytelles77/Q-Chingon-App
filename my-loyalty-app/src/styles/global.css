@@ -1,6 +1,29 @@
-/* src/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background-color: #f0f0f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #f5f3f1; /* beige claro */
+}
+
+.bg-beige-50 {
+  background-color: #fdf6f0;
+}
+
+.bg-beige-100 {
+  background-color: #f5f3f1;
+}
+
+.bg-beige-200 {
+  background-color: #eae4de;
+}
+
+.text-gray-700 {
+  color: #4a4a4a;
+}
+
+.text-gray-800 {
+  color: #333333;
 }

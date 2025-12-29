@@ -1,0 +1,34 @@
+package com.loyalty.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+@Data
+@Entity
+@Table(name="loyalty_logs")
+@Schema(description="Registro de movimientos de puntos")
+public class LoyaltyLog {
+    @Id
+    @GeneratedValue(strategy=GenerationType.IDENTITY)
+    private Long id;
+
+    @Schema(description="Cantidad de puntos asignados o canjeados")
+    private int cantidad;
+
+    @Schema(description="Tipo de movimiento: ASIGNACION o CANJE")
+    private String tipo;
+
+    @Schema(description="Fecha del movimiento")
+    private LocalDateTime fecha;
+    
+    private int pointsChanged;
+
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    @JsonIgnore
+    private User user;
+}

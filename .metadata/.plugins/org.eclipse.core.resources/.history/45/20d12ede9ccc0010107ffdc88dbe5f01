@@ -1,0 +1,92 @@
+package com.loyalty.controllers;
+
+import com.loyalty.dtos.LoyaltyLogDTO;
+import com.loyalty.dtos.PointsTotalsDTO;
+import com.loyalty.services.PointsService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.*;
+import io.swagger.v3.oas.annotations.responses.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/points")
+@Tag(name = "Points Management", description = "Endpoints to manage point history and totals")
+public class PointsController {
+
+    @Autowired
+    private PointsService pointsService;
+
+    // ------------------------------------------------------------
+    // 3.3.1 – Historial de puntos del negocio (paginado)
+    // ------------------------------------------------------------
+    @Operation(
+        summary = "Historial completo de puntos del negocio",
+        description = "Devuelve todas las transacciones de puntos del negocio autenticado"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial obtenido correctamente",
+            content = @Content(schema = @Schema(implementation = LoyaltyLogDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Token inválido"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @GetMapping("/history/business")
+    public ResponseEntity<Page<LoyaltyLogDTO>> getBusinessHistory(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+
+        Page<LoyaltyLogDTO> logs = pointsService.getBusinessHistory(token, page, size);
+        return ResponseEntity.ok(logs);
+    }
+
+    // ------------------------------------------------------------
+    // 3.3.2 – Historial de puntos de un usuario (paginado)
+    // ------------------------------------------------------------
+    @Operation(
+        summary = "Historial de puntos de un usuario",
+        description = "Devuelve todos los registros de puntos de un usuario"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial obtenido correctamente",
+            content = @Content(schema = @Schema(implementation = LoyaltyLogDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @GetMapping("/history/user/{id}")
+    public ResponseEntity<Page<LoyaltyLogDTO>> getUserHistory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+
+        Page<LoyaltyLogDTO> logs = pointsService.getUserHistory(id, page, size);
+        return ResponseEntity.ok(logs);
+    }
+
+    // ------------------------------------------------------------
+    // 3.3.3 – Totales de puntos del negocio (earn / redeem)
+    // ------------------------------------------------------------
+    @Operation(
+        summary = "Totales de puntos del negocio",
+        description = "Devuelve el total de puntos ganados, redimidos y el balance"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Totales obtenidos correctamente",
+            content = @Content(schema = @Schema(implementation = PointsTotalsDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Token inválido"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @GetMapping("/totals")
+    public ResponseEntity<PointsTotalsDTO> getBusinessTotals(
+            @RequestHeader("Authorization") String token) {
+
+        PointsTotalsDTO totals = pointsService.getBusinessTotals(token);
+        return ResponseEntity.ok(totals);
+    }
+}
+

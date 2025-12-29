@@ -1,0 +1,22 @@
+package com.loyalty.dtos;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Schema(description = "Totales de puntos del negocio")
+public class PointsTotalsDTO {
+
+    @Schema(description = "Total de puntos otorgados (earn)", example = "1350")
+    private long totalEarned;
+
+    @Schema(description = "Total de puntos redimidos (redeem)", example = "720")
+    private long totalRedeemed;
+
+    @Schema(description = "Balance actual total (earned - redeemed)", example = "630")
+    private long balance;
+}

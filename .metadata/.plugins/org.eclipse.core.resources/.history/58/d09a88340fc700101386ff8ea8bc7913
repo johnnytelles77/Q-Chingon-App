@@ -1,0 +1,58 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.DashboardInfoDTO;
+import com.loyalty.dtos.RecentActivityDTO;
+import com.loyalty.dtos.RewardConfigDTO;
+import com.loyalty.models.Business;
+import com.loyalty.models.LoyaltyLog;
+import com.loyalty.models.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class BusinessDashboardService {
+
+    private final RewardConfigService rewardConfigService;
+
+    public DashboardInfoDTO getDashboardInfo(Business business) {
+
+        List<User> clientes = business.getClientes();
+
+        long totalUsers = clientes.size();
+
+        long totalEarned = clientes.stream()
+                .flatMap(u -> u.getLoyaltyLogs().stream())
+                .filter(log -> "ASIGNACION".equalsIgnoreCase(log.getTipo()))
+                .mapToLong(LoyaltyLog::getCantidad)
+                .sum();
+
+        long totalRedeemed = clientes.stream()
+                .flatMap(u -> u.getLoyaltyLogs().stream())
+                .filter(log -> "CANJE".equalsIgnoreCase(log.getTipo()))
+                .mapToLong(LoyaltyLog::getCantidad)
+                .sum();
+
+        List<RecentActivityDTO> recentActivities = clientes.stream()
+                .flatMap(u -> u.getLoyaltyLogs().stream())
+                .sorted(Comparator.comparing(LoyaltyLog::getFecha).reversed())
+                .limit(10)
+                .map(RecentActivityDTO::fromLoyaltyLog)
+                .collect(Collectors.toList());
+
+        RewardConfigDTO rewardConfig = rewardConfigService.getConfig(business.getId());
+
+        return DashboardInfoDTO.builder()
+                .businessName(business.getNombre())
+                .totalUsers(totalUsers)
+                .totalPointsEarned(totalEarned)
+                .totalPointsRedeemed(totalRedeemed)
+                .recentActivities(recentActivities)
+                .rewardConfig(rewardConfig)
+                .build();
+    }
+}

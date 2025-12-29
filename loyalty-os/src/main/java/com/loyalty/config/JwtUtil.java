@@ -20,9 +20,10 @@ public class JwtUtil {
     }
 
     // Generar token incluyendo email y businessId
-    public String generateToken(String email) {
+    public String generateToken(String email, Long businessId) {
         return Jwts.builder()
             .setSubject(email)
+            .claim("businessId", businessId)
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 día
             .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -39,21 +40,22 @@ public class JwtUtil {
                 .getSubject();
     }
 
-    // Extraer ID del negocio del token
+
+ // Extraer ID del negocio del token
     public Long extractBusinessId(String token) {
         Object id = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("id");
+                .get("businessId"); // 🔑 coincide con el claim que pusimos
 
         if (id instanceof Integer) {
             return ((Integer) id).longValue();
         } else if (id instanceof Long) {
             return (Long) id;
         } else {
-            throw new IllegalArgumentException("No se pudo extraer el ID del token");
+            throw new IllegalArgumentException("No se pudo extraer el businessId del token");
         }
     }
 

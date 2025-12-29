@@ -1,6 +1,9 @@
 package com.loyalty.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import com.loyalty.models.LoyaltyLog;
 
@@ -9,12 +12,29 @@ import java.util.List;
 @Repository
 public interface LoyaltyLogRepository extends JpaRepository<LoyaltyLog, Long> {
 
-    // Historial de movimientos de un cliente
     List<LoyaltyLog> findByUserId(Long userId);
+    Page<LoyaltyLog> findByUserId(Long userId, Pageable pageable);
+    long countByUserId(Long userId);
 
-    // Historial de movimientos para todos los usuarios de un negocio
     List<LoyaltyLog> findByUserNegocioId(Long negocioId);
-
-    // Contar logs por negocio
+    Page<LoyaltyLog> findByUserNegocioId(Long negocioId, Pageable pageable);
     long countByUserNegocioId(Long negocioId);
+    
+    Page<LoyaltyLog> findByUserNegocioIdAndTipo(
+            Long negocioId,
+            String tipo,
+            Pageable pageable
+    );
+
+    List<LoyaltyLog> findTop20ByUserIdOrderByFechaDesc(Long userId);
+
+    @Query("SELECT COALESCE(SUM(l.cantidad), 0) " +
+           "FROM LoyaltyLog l " +
+           "WHERE l.user.negocio.id = :negocioId AND l.cantidad > 0")
+    int totalPointsEarned(Long negocioId);
+
+    @Query("SELECT COALESCE(SUM(l.cantidad), 0) " +
+           "FROM LoyaltyLog l " +
+           "WHERE l.user.negocio.id = :negocioId AND l.cantidad < 0")
+    int totalPointsRedeemed(Long negocioId);
 }

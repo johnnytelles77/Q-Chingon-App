@@ -1,0 +1,43 @@
+package com.loyalty.repositories;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import com.loyalty.models.LoyaltyLog;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
+@Repository
+public interface LoyaltyLogRepository extends JpaRepository<LoyaltyLog, Long> {
+
+    // Historial de movimientos de un cliente
+    List<LoyaltyLog> findByUserId(Long userId);
+
+    // Historial de movimientos para todos los usuarios de un negocio
+    List<LoyaltyLog> findByUserNegocioId(Long negocioId);
+
+    // Contar logs por negocio
+    long countByUserNegocioId(Long negocioId);
+    
+    List<LoyaltyLog> findTop10ByUserNegocioIdOrderByFechaDesc(Long negocioId);
+
+    // Historial de negocio con paginación
+    List<LoyaltyLog> findByUserNegocioId(Long negocioId, Pageable pageable);
+
+    // Historial de usuario con paginación
+    List<LoyaltyLog> findByUserId(Long userId, Pageable pageable);
+
+    // Total de puntos GANADOS por negocio
+    @Query("SELECT COALESCE(SUM(l.puntos), 0) FROM LoyaltyLog l " +
+           "WHERE l.user.negocio.id = :negocioId AND l.tipo = 'ADD'")
+    int totalPointsEarned(Long negocioId);
+
+    // Total de puntos REDEEM por negocio
+    @Query("SELECT COALESCE(SUM(l.puntos), 0) FROM LoyaltyLog l " +
+           "WHERE l.user.negocio.id = :negocioId AND l.tipo = 'REDEEM'")
+    int totalPointsRedeemed(Long negocioId);
+
+    // Obtiene los logs más recientes por usuario
+    List<LoyaltyLog> findTop20ByUserIdOrderByFechaDesc(Long userId);
+}

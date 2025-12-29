@@ -1,7 +1,10 @@
 package com.loyalty.controllers;
 
+import com.loyalty.config.JwtUtil;
 import com.loyalty.dtos.UserDTO;
+import com.loyalty.models.Business;
 import com.loyalty.models.User;
+import com.loyalty.repositories.BusinessRepository;
 import com.loyalty.services.UserService;
 import com.loyalty.utils.Mapper;
 import io.swagger.v3.oas.annotations.*;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +26,12 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    @Autowired
+    private BusinessRepository businessRepository;
 
     @Operation(summary = "Get all Users")
     @ApiResponses(value = {
@@ -30,9 +40,13 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
     @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
+    public ResponseEntity<List<UserDTO>> getAllUsers(@RequestHeader("Authorization") String authHeader) {
         try {
-            return ResponseEntity.ok(Mapper.toUserDTOList(userService.getAllUsers()));
+        	String token = authHeader.replace("Bearer", "");
+        	Long businessId = jwtUtil.extractBusinessId(token);
+        	
+        	List<User> users = userService.getUsersByBusiness(businessId);
+            return ResponseEntity.ok(Mapper.toUserDTOList(users));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -61,11 +75,21 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO dto) {
+    public ResponseEntity<UserDTO> createUser(
+            @RequestBody UserDTO dto,
+            @RequestHeader("Authorization") String authHeader
+    ) {
         try {
-            User user = userService.createOrGetUser(dto);
-            HttpStatus status = (user.getId() != null) ? HttpStatus.CREATED : HttpStatus.OK;
-            return ResponseEntity.status(status).body(Mapper.toUserDTO(user));
+            String token = authHeader.replace("Bearer ", "");
+            Long businessId = jwtUtil.extractBusinessId(token);
+
+            Business business = businessRepository.findById(businessId)
+                    .orElseThrow(() -> new IllegalArgumentException("Negocio no encontrado"));
+
+            User user = userService.createOrGetUser(dto, business);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                                 .body(Mapper.toUserDTO(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -126,12 +150,24 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @PutMapping("/{id}/add-points/{puntos}")
-    public ResponseEntity<UserDTO> addPoints(@PathVariable Long id, @PathVariable int puntos) {
+    public ResponseEntity<UserDTO> addPoints(
+            @PathVariable Long id,
+            @PathVariable int puntos,
+            @RequestHeader("Authorization") String authHeader) {
+
         try {
-            User user = userService.addPoints(id, puntos);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            String token = authHeader.substring(7).trim();
+            User user = userService.addPoints(id, puntos, token);
             return ResponseEntity.ok(Mapper.toUserDTO(user));
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

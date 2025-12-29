@@ -1,0 +1,76 @@
+package com.loyalty.services;
+
+import com.loyalty.dtos.RewardConfigDTO;
+import com.loyalty.models.RewardConfig;
+import com.loyalty.repositories.RewardConfigRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@Transactional
+public class RewardConfigService {
+
+    @Autowired
+    private RewardConfigRepository rewardRepository;
+
+    public List<RewardConfig> getAll() {
+        return rewardRepository.findAll();
+    }
+
+    public RewardConfig getById(Long id) {
+        return rewardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("RewardConfig not found with ID: " + id));
+    }
+
+    public RewardConfig getByNegocioId(Long negocioId) {
+        RewardConfig config = rewardRepository.findByNegocioId(negocioId);
+        if (config == null) {
+            throw new EntityNotFoundException("No RewardConfig found for business ID: " + negocioId);
+        }
+        return config;
+    }
+
+    public RewardConfig create(RewardConfigDTO dto) {
+        RewardConfig config = new RewardConfig();
+        config.setPuntosNecesarios(dto.getPuntosNecesarios());
+        config.setMensajeProgreso(dto.getMensajeProgreso());
+        config.setNegocioId(dto.getBusinessId()); // usa el nombre correcto del DTO
+        return rewardRepository.save(config);
+    }
+
+    public RewardConfig updateConfig(Long id, RewardConfigDTO dto) {
+        RewardConfig config = rewardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("RewardConfig not found with ID: " + id));
+
+        if (dto.getPuntosNecesarios() != null)
+            config.setPuntosNecesarios(dto.getPuntosNecesarios());
+
+        if (dto.getMensajeProgreso() != null)
+            config.setMensajeProgreso(dto.getMensajeProgreso());
+
+        if (dto.getBusinessId() != null)
+            config.setNegocioId(dto.getBusinessId());
+
+        return rewardRepository.save(config);
+    }
+
+    public void delete(Long id) {
+        if (!rewardRepository.existsById(id)) {
+            throw new EntityNotFoundException("RewardConfig not found with ID: " + id);
+        }
+        rewardRepository.deleteById(id);
+    }
+
+    public RewardConfigDTO getConfig(Long businessId) {
+        RewardConfig config = getByNegocioId(businessId);
+        return RewardConfigDTO.builder()
+                .puntosNecesarios(config.getPuntosNecesarios())
+                .mensajeProgreso(config.getMensajeProgreso())
+                .businessId(config.getNegocioId())
+                .build();
+    }
+}}

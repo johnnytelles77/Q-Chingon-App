@@ -1,14 +1,19 @@
 package com.loyalty.services;
 
+import com.loyalty.config.JwtUtil;
+import com.loyalty.dtos.LoyaltyLogDTO;
 import com.loyalty.dtos.UserDTO;
 import com.loyalty.models.Business;
 import com.loyalty.models.User;
 import com.loyalty.repositories.BusinessRepository;
 import com.loyalty.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,9 +26,15 @@ public class UserService {
 
     @Autowired
     private BusinessRepository businessRepository;
-
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    
+    @Autowired
+    private LoyaltyLogService loyaltyLogService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    public List<User> getUsersByBusiness(Long businessId) {
+        return userRepository.findByNegocioId(businessId);
     }
 
     public Optional<User> getUserById(Long id) {
@@ -34,28 +45,20 @@ public class UserService {
         return userRepository.findByTelefono(telefono);
     }
 
-    public User createOrGetUser(UserDTO dto) {
-        // Buscar por teléfono
+    public User createOrGetUser(UserDTO dto, Business business) {
         Optional<User> existing = userRepository.findByTelefono(dto.getTelefono());
         if (existing.isPresent()) {
-            return existing.get(); // si ya existe, retornarlo
+            return existing.get();
         }
 
-        // Si no existe, crear nuevo usuario
         User user = new User();
         user.setNombre(dto.getNombre());
         user.setTelefono(dto.getTelefono());
         user.setEmail(dto.getEmail());
-
-        // Si no se envían puntos, poner 25 puntos de regalo
         user.setPuntos(25);
 
-        // Asignar negocio si se proporciona
-        if (dto.getBusinessId() != null) {
-            Business negocio = businessRepository.findById(dto.getBusinessId())
-                    .orElseThrow(() -> new IllegalArgumentException("Negocio no encontrado"));
-            user.setNegocio(negocio);
-        }
+        // ✅ ASIGNAR NEGOCIO DESDE EL TOKEN
+        user.setNegocio(business);
 
         return userRepository.save(user);
     }
@@ -74,11 +77,39 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public User addPoints(Long userId, int puntos) {
+    public User addPoints(Long userId, int puntos, String token) {
+
+        // 1️⃣ Extraer email del token
+        String email = jwtUtil.extractEmail(token);
+        if (email == null) {
+            throw new SecurityException("Token inválido o no autenticado");
+        }
+
+        // 2️⃣ Obtener businessId desde el token
+        Long businessId = jwtUtil.extractBusinessId(token);
+
+        // 3️⃣ Buscar usuario
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // 4️⃣ Validar que el usuario pertenezca al negocio
+        if (!user.getNegocio().getId().equals(businessId)) {
+            throw new SecurityException("Acceso denegado");
+        }
+
+        // 5️⃣ Sumar puntos
         user.setPuntos(user.getPuntos() + puntos);
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // 6️⃣ Log de lealtad
+        LoyaltyLogDTO log = new LoyaltyLogDTO();
+        log.setUserId(savedUser.getId());
+        log.setCantidad(puntos);
+        log.setTipo("ADD_POINTS");
+        log.setFecha(LocalDateTime.now());
+        loyaltyLogService.saveLog(log);
+
+        return savedUser;
     }
 
     public User redeemPoints(Long userId, int puntos) {
@@ -89,7 +120,6 @@ public class UserService {
         return userRepository.save(user);
     }
     
- // Dentro de UserService.java
     public User getUserByTelefonoExact(String telefono) {
         return userRepository.findByTelefono(telefono)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));

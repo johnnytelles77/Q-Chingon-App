@@ -1,67 +1,87 @@
 package com.loyalty.services;
 
 import com.loyalty.dtos.RewardConfigDTO;
+import com.loyalty.models.Business;
 import com.loyalty.models.RewardConfig;
+import com.loyalty.repositories.BusinessRepository;
 import com.loyalty.repositories.RewardConfigRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@Transactional
 public class RewardConfigService {
 
     @Autowired
-    private RewardConfigRepository rewardRepository;
+    private RewardConfigRepository rewardRepo;
 
+    @Autowired
+    private BusinessRepository businessRepo;
+
+    // Obtener todos (devuelve entidades; el controller puede mapear a DTO si prefiere)
     public List<RewardConfig> getAll() {
-        return rewardRepository.findAll();
+        return rewardRepo.findAll();
     }
-    
+
+    // Obtener por id (entidad)
     public RewardConfig getById(Long id) {
-        return rewardRepository.findById(id)
+        return rewardRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("RewardConfig not found with ID: " + id));
     }
 
+    // Obtener por negocioId (entidad)
     public RewardConfig getByNegocioId(Long negocioId) {
-        RewardConfig config = rewardRepository.findByNegocioId(negocioId);
-        if (config == null) {
-            throw new EntityNotFoundException("No RewardConfig found for business ID: " + negocioId);
-        }
-        return config;
+        return rewardRepo.findByNegocioId(negocioId)
+                .orElseThrow(() -> new EntityNotFoundException("No RewardConfig found for negocioId " + negocioId));
     }
 
+    // Crear a partir de DTO -> devuelve entidad creada
     public RewardConfig create(RewardConfigDTO dto) {
-        RewardConfig config = new RewardConfig();
-        config.setPuntosNecesarios(dto.getPuntosNecesarios());
-        config.setMensajeProgreso(dto.getMensajeProgreso());
-        config.setNegocioId(dto.getNegocioId());
-        return rewardRepository.save(config);
+        if (dto == null) throw new IllegalArgumentException("DTO no puede ser null");
+
+        // opcional: validar que exista el negocio si dto.negocioId no es null
+        if (dto.getNegocioId() != null) {
+            Business negocio = businessRepo.findById(dto.getNegocioId())
+                    .orElseThrow(() -> new EntityNotFoundException("Negocio no encontrado con ID " + dto.getNegocioId()));
+            RewardConfig rc = dto.toEntity();
+            rc.setNegocio(negocio);
+            return rewardRepo.save(rc);
+        } else {
+            RewardConfig rc = dto.toEntity();
+            return rewardRepo.save(rc);
+        }
     }
 
+    // Actualizar parcialmente (devuelve entidad actualizada)
     public RewardConfig updateConfig(Long id, RewardConfigDTO dto) {
-        RewardConfig config = rewardRepository.findById(id)
+        RewardConfig config = rewardRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("RewardConfig not found with ID: " + id));
 
-        if (dto.getPuntosNecesarios() != null)
+        if (dto.getPuntosNecesarios() != 0) { // si 0 es valor válido para ti, cambia la condición
             config.setPuntosNecesarios(dto.getPuntosNecesarios());
+        }
 
-        if (dto.getMensajeProgreso() != null)
+        if (dto.getMensajeProgreso() != null) {
             config.setMensajeProgreso(dto.getMensajeProgreso());
+        }
 
-        if (dto.getNegocioId() != null)
+        if (dto.getNegocioId() != null) {
+            Business negocio = businessRepo.findById(dto.getNegocioId())
+                    .orElseThrow(() -> new EntityNotFoundException("Negocio no encontrado con ID " + dto.getNegocioId()));
             config.setNegocioId(dto.getNegocioId());
+            config.setNegocio(negocio);
+        }
 
-        return rewardRepository.save(config);
+        return rewardRepo.save(config);
     }
 
+    // Eliminar
     public void delete(Long id) {
-        if (!rewardRepository.existsById(id)) {
+        if (!rewardRepo.existsById(id)) {
             throw new EntityNotFoundException("RewardConfig not found with ID: " + id);
         }
-        rewardRepository.deleteById(id);
+        rewardRepo.deleteById(id);
     }
 }

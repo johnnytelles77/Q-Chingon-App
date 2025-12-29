@@ -35,7 +35,7 @@ public class AuthService {
         businessRepository.save(business);
 
         // Generar token automáticamente
-        return jwtUtil.generateToken(dto.getEmail());
+        return jwtUtil.generateToken(dto.getEmail(), business.getId());
     }
 
     // Login
@@ -45,6 +45,6 @@ public class AuthService {
             throw new RuntimeException("Credenciales inválidas");
         }
 
-        return jwtUtil.generateToken(email);
+        return jwtUtil.generateToken(email, business.getId());
     }
 }

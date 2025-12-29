@@ -40,6 +40,7 @@ public class SecurityConfig {
 
                 // Permite swagger
                 .requestMatchers(
+                	"/api/users/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/api/docs/**",
